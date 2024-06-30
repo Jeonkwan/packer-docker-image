@@ -7,28 +7,53 @@ packer {
     }
   }
 }
+packer {
+  required_plugins {
+    ansible = {
+      version = "~> 1"
+      source  = "github.com/hashicorp/ansible"
+    }
+  }
+}
+
 
 source "docker" "base" {
-  image  = "ubuntu:latest"
+  image  = "ubuntu:focal"
   commit = true
+  run_command = ["-d", "-i", "-t", "--rm", "--entrypoint=/bin/bash", "{{.Image}}"]
 }
 
 
 build {
-  name = "alpine-python"
+  # name = "ubuntu-python"
   sources = [
     "source.docker.base"
   ]
 
+  provisioner "file" {
+    source = "./ansible/playbook.yml"
+    destination = "/root/playbook.yml"
+  }
+
+  provisioner "shell" {
+    inline = [
+        "apt-get -y update",
+        "apt-get install -y software-properties-common",
+        "apt-add-repository ppa:ansible/ansible",
+        "apt-get -y update",
+        "apt-get install --no-install-recommends -y ansible",
+        "apt-get clean",
+        "rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*"
+    ]
+  }
+
+
   provisioner "ansible" {
-    user = "ubuntu"
-    playbook_file = "./ansible/playbook.yml"
-    ansible_env_vars = ["ANSIBLE_PIPELINING=true", "ANSIBLE_SSH_PIPELINING=true"]
-    use_proxy = false
+    playbook_file    = "./ansible/playbook.yml"
     extra_arguments = [
       "ansible_host=default",
       "ansible_connection=docker"
-    ] 
+    ]
   }
 
   post-processor "docker-tag" {
