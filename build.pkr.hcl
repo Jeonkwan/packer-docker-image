@@ -9,7 +9,7 @@ packer {
 }
 
 source "docker" "base" {
-  image  = "alpine:latest"
+  image  = "ubuntu:latest"
   commit = true
 }
 
@@ -20,35 +20,19 @@ build {
     "source.docker.base"
   ]
 
-  provisioner "shell" {
-    environment_vars = [
-      "MSG=hello world",
-    ]
-    inline = [
-      "echo \"MSG is $MSG\" > example.txt",
-    ]
-  }
-
-  provisioner "shell" {
-    environment_vars = [
-      "MSG=hello world",
-    ]
-    inline = [
-      "echo \"MSG is $MSG\" > abc.txt",
-    ]
-  }
-
-  provisioner "shell" {
-    environment_vars = [
-      "MSG=hello world",
-    ]
-    inline = [
-      "cat abc.txt > abc_copy.txt",
-    ]
+  provisioner "ansible" {
+    user = "ubuntu"
+    playbook_file = "./ansible/playbook.yml"
+    ansible_env_vars = ["ANSIBLE_PIPELINING=true", "ANSIBLE_SSH_PIPELINING=true"]
+    use_proxy = false
+    extra_arguments = [
+      "ansible_host=default",
+      "ansible_connection=docker"
+    ] 
   }
 
   post-processor "docker-tag" {
-    repository = "alpine-python"
+    repository = "ubuntu-python"
     tags       = ["latest"]
   }
 }
