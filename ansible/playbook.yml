@@ -1,0 +1,34 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Install Python 3.10
+      package:
+        name: python310
+        state: present
+
+    - name: Create virtual environment
+      command: python3.10 -m venv /app/venv
+      args:
+        chdir: /app
+
+    - name: Install pip packages
+      pip:
+        name: "{{ item }}"
+        virtualenv: /app/venv
+        state: present
+      loop: "{{ lookup('file', 'requirements.txt') | lines }}"
+
+    - name: Set entrypoint
+      copy:
+        content: |
+          #!/bin/bash
+          source /app/venv/bin/activate
+          echo "Hello world!"
+        dest: /entrypoint.sh
+        mode: 0755
+
+    - name: Set Docker entrypoint
+      docker_image:
+        name: alpine-python-app
+        entrypoint: /entrypoint.sh

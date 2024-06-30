@@ -1,0 +1,9 @@
+---
+# Ansible inventory file for Packer provisioner
+all:
+  hosts:
+    localhost:
+      ansible_connection: docker
+      ansible_host: 127.0.0.1
+      ansible_port: 2376
+      ansible_user: root
