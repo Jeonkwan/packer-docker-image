@@ -1,0 +1,48 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Install Python 3.9
+      package:
+        name: 
+          - python3.9
+          - python3.9-venv
+        state: latest
+
+    - name: Create virtual environment
+      command: python3.9 -m venv /app/venv
+
+    - name: Create /app
+      ansible.builtin.file:
+        path: /app
+        state: directory
+        mode: '0755'
+
+    - name: copy requirements.txt
+      copy:
+        src: ../build/requirements.txt
+        dest: /app/requirements.txt
+        mode: 644
+
+    # not working somehow
+    # - name: Install pip packages
+    #   pip:
+    #     requirements: /app/requirements.txt
+    #     virtualenv: /app/venv
+        # virtualenv_command: /usr/bin/python3.9 -m venv
+    
+    - name: Install packages
+      shell: |
+        set -x
+        source /app/venv/bin/activate
+        which pip3
+        pip3 install -r /app/requirements.txt
+      args:
+        executable: /bin/bash
+
+    - name: prepare entrypoint script
+      copy:
+        src: ./entrypoint.sh
+        dest: /app/entrypoint.sh
+        mode: 0755
+
