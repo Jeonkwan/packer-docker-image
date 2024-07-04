@@ -16,43 +16,57 @@ packer {
   }
 }
 
+variable "ansible_host" {
+  default = "packer-build-tmp"
+}
+
+variable "ansible_connection" {
+  default = "docker"
+}
+
+variable "base_image" {
+  default = "ubuntu:focal"
+}
 
 source "docker" "base" {
-  image  = "ubuntu:focal"
+  image  = var.base_image
   commit = true
-  run_command = ["-d", "-i", "-t", "--rm", "--entrypoint=/bin/bash", "{{.Image}}"]
+  run_command = [
+    "-d",
+    "-i",
+    "-t",
+    "--rm",
+    "--entrypoint=/bin/bash",
+    "--name",
+    var.ansible_host,
+    var.base_image
+  ]
 }
 
 
 build {
-  # name = "ubuntu-python"
   sources = [
     "source.docker.base"
   ]
 
-  provisioner "file" {
-    source = "./ansible/playbook.yml"
-    destination = "/root/playbook.yml"
-  }
-
   provisioner "shell" {
+    env = {
+      TZ              = "UTC"
+      DEBIAN_FRONTEND = "noninteractive"
+    }
     inline = [
-        "apt-get -y update",
-        "apt-get install -y software-properties-common",
-        "apt-add-repository ppa:ansible/ansible",
-        "apt-get -y update",
-        "apt-get install --no-install-recommends -y ansible",
-        "apt-get clean",
-        "rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*"
+      "apt-get -y update",
+      "apt-get install -y python3"
     ]
   }
 
-
   provisioner "ansible" {
-    playbook_file    = "./ansible/playbook.yml"
+    # command       = "/usr/local/py-utils/bin/ansible-playbook"
+    playbook_file = "./ansible/playbook.yml"
     extra_arguments = [
-      "ansible_host=default",
-      "ansible_connection=docker"
+      "-vvv",
+      "--extra-vars",
+      "ansible_user=root ansible_host=${var.ansible_host} ansible_connection=${var.ansible_connection}"
     ]
   }
 
