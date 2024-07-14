@@ -28,6 +28,34 @@ variable "base_image" {
   default = "ubuntu:focal"
 }
 
+variable "foundation_image_name" {
+  default = "ubuntu-python"
+}
+
+variable "foundation_image_tags" {
+  type = list(string)
+  default = [
+    "latest"
+  ]
+}
+
+variable "final_image_name" {
+  type    = string
+  default = "ubuntu-python-final"
+}
+
+variable "final_image_tags" {
+  type = list(string)
+  default = [
+    "latest"
+  ]
+}
+
+variable "default_image_tag" {
+  type    = string
+  default = "latest"
+}
+
 source "docker" "base" {
   image  = var.base_image
   commit = true
@@ -43,8 +71,8 @@ source "docker" "base" {
   ]
 }
 
-
 build {
+  name = "foundation"
   sources = [
     "source.docker.base"
   ]
@@ -60,6 +88,34 @@ build {
     ]
   }
 
+  post-processor "docker-tag" {
+    repository = var.foundation_image_name
+    tags       = var.foundation_image_tags
+  }
+}
+
+source "docker" "foundation" {
+  image  = "${var.foundation_image_name}:${var.default_image_tag}"
+  commit = true
+  pull = false
+  run_command = [
+    "-d",
+    "-i",
+    "-t",
+    "--rm",
+    "--entrypoint=/bin/bash",
+    "--name",
+    var.ansible_host,
+    "${var.foundation_image_name}:${var.default_image_tag}"
+  ]
+}
+
+build {
+  name = "final"
+  sources = [
+    "source.docker.foundation"
+  ]
+
   provisioner "ansible" {
     # command       = "/usr/local/py-utils/bin/ansible-playbook"
     playbook_file = "./ansible/playbook.yml"
@@ -71,8 +127,7 @@ build {
   }
 
   post-processor "docker-tag" {
-    repository = "ubuntu-python"
-    tags       = ["latest"]
+    repository = var.final_image_name
+    tags       = var.final_image_tags
   }
 }
-
